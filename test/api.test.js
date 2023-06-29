@@ -1,31 +1,30 @@
 const chai = require('chai');
 const chaiHttp = require('chai-http');
+const { expect } = chai;
 const app = require('../server');
+const Book = require('../models/Book');
 
 chai.use(chaiHttp);
-const expect = chai.expect;
 
 describe('Books API', () => {
-  // Test GET /api/books
+  after(async () => {
+    await Book.deleteMany({title: "Mock Book"});
+    await Book.deleteMany({title: "Updated Book"});
+  });
+
   describe('GET /api/books', () => {
-    it('should return an array of books', (done) => {
-      chai
-        .request(app)
-        .get('/api/books')
-        .end((err, res) => {
-          expect(res).to.have.status(200);
-          expect(res.body).to.be.an('array');
-          done();
-        });
+    it('should get all books', async () => {
+      const res = await chai.request(app).get('/api/books');
+      expect(res).to.have.status(200);
+      expect(res.body).to.be.an('array');
     });
   });
 
-  // Test POST /api/books
   describe('POST /api/books', () => {
-    it('should create a new book', (done) => {
-      const newBook = {
-        title: 'Animal Farm',
-        author: '649ae6fb70daf4f672aeade9', 
+    it('should create a new book', async () => {
+      const mockBook = {
+        title: 'Mock Book',
+        author: '649ae6fb70daf4f672aeade9', //Id for George Orwell
         price: 11.98,
         isbn: '978-0452284241',
         language: 'English',
@@ -33,109 +32,96 @@ describe('Books API', () => {
         publisher: 'Plume',
       };
 
-      chai
-        .request(app)
-        .post('/api/books')
-        .send(newBook)
-        .end((err, res) => {
-          expect(res).to.have.status(201);
-          expect(res.body).to.be.an('object');
-          expect(res.body.title).to.equal('Animal Farm');
-          done();
-        });
+      const res = await chai.request(app).post('/api/books').send(mockBook);
+      expect(res).to.have.status(201);
+      expect(res.body).to.include(mockBook);
+
+      // Verify the book is saved in the database
+      const book = await Book.findOne({ title: 'Mock Book' });
+      expect(book).to.exist;
     });
 
-    it('should return 400 Bad Request for missing required fields', (done) => {
+    it('should return an error when creating an invalid book', async () => {
       const invalidBook = {
-        title: 'Animal Farm',
-        // Missing author field
-        price: 9.99,
+        author: 'New Author',
+        price: 29.99,
+      };
+
+      const res = await chai.request(app).post('/api/books').send(invalidBook);
+      expect(res).to.have.status(400);
+      expect(res.body).to.have.property('error', 'Bad request');
+    });
+  });
+
+  describe('PUT /api/books/:id', () => {
+    it('should update an existing book', async () => {
+      // Create a mock book
+      const mockBook = await Book.create({ 
+        title: 'Mock Book',
+        author: '649ae6fb70daf4f672aeade9', //Id for George Orwell
+        price: 11.98,
         isbn: '978-0452284241',
         language: 'English',
         numberOfPages: 128,
         publisher: 'Plume',
-      };
+      });
 
-      chai
-        .request(app)
-        .post('/api/books')
-        .send(invalidBook)
-        .end((err, res) => {
-          expect(res).to.have.status(400);
-          done();
-        });
-    });
-  });
-
-  // Test PUT /api/books/:id
-  describe('PUT /api/books/:id', () => {
-    it('should update an existing book', (done) => {
       const updatedBook = {
-        title: '19845', //Changing 1984 to 19845
-        author: '649ae6fb70daf4f672aeade9',
-        price: 9.99,
-        isbn: '978-1443434973',
-        language: 'English',
-        numberOfPages: 416,
-        publisher: 'Harper Perennial',
-      };
-
-      chai
-        .request(app)
-        .put('/api/books/649b2788bc50c73760506806') //Id for the book 1984
-        .send(updatedBook)
-        .end((err, res) => {
-          expect(res).to.have.status(200);
-          expect(res.body).to.be.an('object');
-          expect(res.body.title).to.equal('19845');
-          done();
-        });
-    });
-
-    it('should return 404 Not Found for non-existent book', (done) => {
-      const updatedBook = {
-        title: '19845',
-        author: '649ae6fb70daf4f672aeade9', 
+        title: 'Updated Book',
         price: 19.99,
-        isbn: '978-1443434973',
-        language: 'English',
-        numberOfPages: 300,
-        publisher: 'Harper Perennial',
+      };
+
+      const res = await chai.request(app).put(`/api/books/${mockBook._id}`).send(updatedBook);
+      expect(res).to.have.status(200);
+      expect(res.body.title).to.equal(updatedBook.title);
+      expect(res.body.price).to.equal(updatedBook.price);
+
+      // Verify the book is updated in the database
+      const updatedBookInDB = await Book.findById(mockBook._id);
+      expect(updatedBookInDB.title).to.equal(updatedBook.title);
+      expect(updatedBookInDB.price).to.equal(updatedBook.price);
+    });
+
+    it('should return an error when updating a non-existent book', async () => {
+      const updatedBook = {
+        title: 'Updated Book',
+        price: 19.99,
       };
       //While trying to find an id that doesn't exist, the fake id should be in the /^[0-9a-fA-F]{24}$/ valid ObjectId form,
       //because mongoose tries to casts id parameter to the model's _id field so that it can properly query
-      chai
-        .request(app)
-        .put('/api/books/012345678901234567891234') // Id 012345678901234567891234 does not exist
-        .send(updatedBook)
-        .end((err, res) => {
-          expect(res).to.have.status(404);
-          done();
-        });
+      const res = await chai.request(app).put('/api/books/012345678901234567890123').send(updatedBook);
+      expect(res).to.have.status(404);
+      expect(res.body).to.have.property('error');
     });
   });
 
-  // Test DELETE /api/books/:id
   describe('DELETE /api/books/:id', () => {
-    it('should delete an existing book', (done) => {
-      chai
-        .request(app)
-        .delete('/api/books/649b2788bc50c73760506806')
-        .end((err, res) => {
-          expect(res).to.have.status(204);
-          done();
-        });
+    it('should delete an existing book', async () => {
+      // Create a mock book
+      const book = await Book.create({ 
+        title: 'Mock Book',
+        author: '649ae6fb70daf4f672aeade9', //Id for George Orwell
+        price: 11.98,
+        isbn: '978-0452284241',
+        language: 'English',
+        numberOfPages: 128,
+        publisher: 'Plume',
+      });
+
+      const res = await chai.request(app).delete(`/api/books/${book._id}`);
+      expect(res).to.have.status(204);
+
+      // Verify the book is deleted from the database
+      const deletedBook = await Book.findById(book._id);
+      expect(deletedBook).to.not.exist;
     });
-        //While trying to find an id that doesn't exist, the fake id should be in the /^[0-9a-fA-F]{24}$/ valid ObjectId form,
+
+    it('should return an error when deleting a non-existent book', async () => {
+      //While trying to find an id that doesn't exist, the fake id should be in the /^[0-9a-fA-F]{24}$/ valid ObjectId form,
       //because mongoose tries to casts id parameter to the model's _id field so that it can properly query
-    it('should return 404 Not Found for non-existent book', (done) => {
-      chai
-        .request(app)
-        .delete('/api/books/012345678901234567891234') // Id 012345678901234567891234 does not exist
-        .end((err, res) => {
-          expect(res).to.have.status(404);
-          done();
-        });
+      const res = await chai.request(app).delete('/api/books/012345678901234567890123');
+      expect(res).to.have.status(404);
+      expect(res.body).to.have.property('error', "Book not found");
     });
   });
 });

@@ -26,6 +26,8 @@ const authorsRouter = require('./routes/authors');
 app.use('/api/books', booksRouter);
 app.use('/api/authors', authorsRouter);
 
-app.listen(port, () => {
+const server = app.listen(port, () => {
   console.log(`Server is listening on port ${port}`);
 });
+
+module.exports = server;

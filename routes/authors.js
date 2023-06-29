@@ -14,4 +14,17 @@ router.get('/', async (req, res) => {
   }
 });
 
+router.post('/', async (req, res) => {
+  try {
+    const author = await Author.create(req.body);
+    res.status(201).json(author);
+  } catch (error) {
+    if (error.name === 'ValidationError') {
+      res.status(400).json({ error: 'Bad request' });
+    } else {
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+});
+
 module.exports = router;

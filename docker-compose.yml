@@ -19,5 +19,18 @@ services:
       DB_NAME: dbLib
     depends_on:
       - mongo_db
+    command: npm start
+  tests:
+    build: .
+    ports:
+      - 3000:3000
+    environment:
+      MONGODB_URI: mongodb://mongo_db:27017
+      PORT: 3000
+      DB_NAME: dbLib
+    depends_on:
+      - mongo_db
+    command: npm test
+  
 volumes:
   mongo_db: {}

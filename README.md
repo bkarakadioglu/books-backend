@@ -5,15 +5,8 @@ creating a book, creating an author, deleting a book and updating a book. It is 
 
 ## Table of Contents
 
-- [Prerequisites](#prerequisites)
 - [Usage](#usage)
 - [API Endpoints](#api-endpoints)
-
-
-## Prerequisites
-- Node
-- MongoDB
-- Docker
 
 ## Usage
 ### Running Locally
@@ -24,8 +17,9 @@ creating a book, creating an author, deleting a book and updating a book. It is 
 
 ### Running With Docker
 1. Clone the repo
-2. Build and start the containers `docker compose up api`
-3. The server can be reached at `http://localhost:3000`.
+2. Install dependencies `npm install`
+3. Build and start the containers `docker compose up api`
+4. The server can be reached at `http://localhost:3000`.
 
 ### Testing Locally
 1. Clone the repo
@@ -34,7 +28,8 @@ creating a book, creating an author, deleting a book and updating a book. It is 
 
 ### Testing With Docker
 1. Clone the repo
-2. Build and start the containers `docker compose up tests`
+2. Install dependencies `npm install`
+3. Build and start the containers `docker compose up tests`
 
 ## API Endpoints
 
